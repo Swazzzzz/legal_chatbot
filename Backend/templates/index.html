@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Legal Advisor Chatbot</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #ece5dd; margin: 0; padding: 0; }
+    .header { background: #075E54; color: white; text-align: center; padding: 15px; font-size: 20px; font-weight: bold; }
+    .chat-container { max-width: 600px; margin: auto; background: #fff; height: 80vh; overflow-y: auto; padding: 15px; border-left: 1px solid #ddd; border-right: 1px solid #ddd; }
+    .message { margin: 10px 0; padding: 10px 15px; border-radius: 20px; max-width: 70%; display: flex; flex-direction: column; clear: both; }
+    .user { background: #dcf8c6; float: right; text-align: right; }
+    .bot { background: #f1f0f0; float: left; text-align: left; }
+    .timestamp { font-size: 10px; color: gray; margin-top: 5px; }
+    .input-area { max-width: 600px; margin: auto; display: flex; border-top: 1px solid #ddd; }
+    .input-area input { flex: 1; padding: 15px; border: none; font-size: 16px; }
+    .input-area button { padding: 15px; border: none; background: #075E54; color: white; cursor: pointer; font-weight: bold; }
+    .clear-btn { background: red; margin-left: 5px; }
+  </style>
+</head>
+<body>
+  <div class="header">⚖️ Legal Advisor Chatbot</div>
+
+  <div class="chat-container" id="chatbox"></div>
+
+  <div class="input-area">
+    <input type="text" id="query" placeholder="Type your message..." autocomplete="off">
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="clearChat()" class="clear-btn">Clear</button>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("query");
+      const message = input.value.trim();
+      if (message === "") return;
+
+      // Add user message
+      addMessage("user", message);
+
+      // Show Thinking message
+      const thinkingId = addMessage("bot", "🤔 Thinking...");
+
+      input.value = "";
+
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: message })
+        });
+
+        const data = await response.json();
+
+        document.getElementById(thinkingId).innerHTML =
+          `<p><strong>🤖 Bot:</strong> ${data.answer}</p><span class="timestamp">${data.time}</span>`;
+      } catch (err) {
+        document.getElementById(thinkingId).innerHTML =
+          `<p><strong>🤖 Bot:</strong> ❌ Could not reach the server. Please try again.</p><span class="timestamp">${new Date().toLocaleTimeString()}</span>`;
+      }
+
+      scrollToBottom();
+    }
+
+    function addMessage(sender, text) {
+      const chatbox = document.getElementById("chatbox");
+      const msgId = "msg-" + Date.now();
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message " + sender;
+      msgDiv.id = msgId;
+      const who = sender === "user" ? "👤 Me:" : "🤖 Bot:";
+      const time = new Date().toLocaleTimeString();
+      msgDiv.innerHTML = `<p><strong>${who}</strong> ${text}</p><span class="timestamp">${time}</span>`;
+      chatbox.appendChild(msgDiv);
+      scrollToBottom();
+      return msgId;
+    }
+
+    function scrollToBottom() {
+      const chatbox = document.getElementById("chatbox");
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    async function clearChat() {
+      document.getElementById("chatbox").innerHTML = "";
+      await fetch("/clear", { method: "POST" });
+    }
+  </script>
+</body>
+</html>
